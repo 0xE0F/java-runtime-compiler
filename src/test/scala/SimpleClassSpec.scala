@@ -19,10 +19,10 @@ class SimpleClassSpec extends FlatSpec {
    }
 
    "A Java Runtime Compiler class" should "compile simple class without error" in {
-         assert(false)
-         val compiler = new JavaCompiler
-         val src = emitValidSource("SimpleCase")
-         val obj = compiler.compile(src)
+         val compiler = new RuntimeJavaCompiler
+         val className = "SimpleClass"
+         val src = emitValidSource(className)
+         val obj = compiler.compile(className, src)
          assert(obj != null)
       }
 
