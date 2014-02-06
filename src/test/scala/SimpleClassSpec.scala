@@ -38,9 +38,9 @@ class SimpleClassSpec extends FlatSpec {
   }
 
   def checkForThrowException[T<:Exception:Manifest](className: String, srcGen: String => String, ex: Class[T]) {
-      intercept[T] {
-      val compiler = new RuntimeJavaCompiler
-      val obj = compiler.compile(className, srcGen(className))
+    intercept[T] {
+	val compiler = new RuntimeJavaCompiler
+      val obj = compiler.compileObject(className, srcGen(className))
     }
   }
 
@@ -48,13 +48,13 @@ class SimpleClassSpec extends FlatSpec {
     val compiler = new RuntimeJavaCompiler
     val className = generateClassName
     val src = emitValidSource(className)
-    val obj = compiler.compile(className, src)
+    val obj = compiler.compileObject(className, src)
     assert(obj != null)
   }
 
   it should "throw CompileException if an syntax error occur" in {
-      val className = generateClassName
-      checkForThrowException(className, emitInvalidSource, classOf[CompileException])
+    val className = generateClassName
+    checkForThrowException(className, emitInvalidSource, classOf[CompileException])
   }
 
   it should "throw IllegalAccessException if access rigth invalid"  in {
@@ -63,13 +63,14 @@ class SimpleClassSpec extends FlatSpec {
   }
 
   it should "throw InstantiationException if appropriate constructor not found" in {
-      intercept[InstantiationException] {
-      }
+    intercept[InstantiationException] {
+    }
   }
 
   it should "throw ClassNotFoundException if class can't be loaded" in {
-      intercept[ClassNotFoundException] {
-      }
+		intercept[ClassNotFoundException] {
+    }
   }
+
 
 }

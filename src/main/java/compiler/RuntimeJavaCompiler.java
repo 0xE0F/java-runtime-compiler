@@ -3,6 +3,10 @@ package compiler;
 import java.io.ByteArrayOutputStream;
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.io.IOException;
+
+import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
 
 import java.net.URI;
 
@@ -28,22 +32,55 @@ import java.util.Map;
 public class RuntimeJavaCompiler {
    private final JavaCompiler compiler;
    private final DiagnosticCollector<JavaFileObject> diagnostics = new DiagnosticCollector<JavaFileObject>();
+   private final List<String> options = new ArrayList<String>();
 
-   public RuntimeJavaCompiler() {
+   public RuntimeJavaCompiler(Iterable<String> options) {
       this.compiler = ToolProvider.getSystemJavaCompiler();
 
       if (this.compiler == null) {
          throw new RuntimeException("Seems that JDK not installed. Try to install JDK or add to classpath tools.jar");
       }
+
+      for (String each: options) {
+      	  this.options.add(each);
+      }
    }
 
-   public Object compile(String className, String source) throws CompileException, ClassNotFoundException,
+
+   public RuntimeJavaCompiler() {
+       this(new ArrayList<String>());
+   }
+
+   public Object compileObject(String className, String source) throws CompileException, ClassNotFoundException,
    	  InstantiationException, IllegalAccessException {
+      return compile(className, source).newInstance();
+   }
+
+   public Object compileObject(String className, String source, Iterable<? extends Object> args) throws CompileException, ClassNotFoundException, InstantiationException, IllegalAccessException, InvocationTargetException, NoSuchMethodException {
+
+    Class t = compile(className, source);
+    Constructor ctor = t.getConstructor(makeParams(args));
+      return ctor.newInstance(args);
+   }
+
+   private Class[] makeParams(Iterable<? extends Object> args)
+   {
+       List<Class> types = new ArrayList<Class>();
+       for (Object each: args) {
+       	   if (each == null)
+       	       throw new IllegalArgumentException("Null arguments is not allowed");
+       	   types.add(each.getClass());
+       }
+
+       return (Class[])types.toArray();
+   }
+
+   private Class compile(String className, String source) throws CompileException, ClassNotFoundException {
       final InMemoryFileManager fileManager = new InMemoryFileManager(compiler);
       final List<JavaFileObject> files = new ArrayList<JavaFileObject>();
 
       files.add(new SourceFile(className, source));
-      CompilationTask task = compiler.getTask(null, fileManager, this.diagnostics, null, null, files);
+      CompilationTask task = compiler.getTask(null, fileManager, this.diagnostics, options, null, files);
 
       boolean result = task.call();
       if (!result) {
@@ -52,7 +89,12 @@ public class RuntimeJavaCompiler {
 
       ClassLoader loader = new CustomLoader(this.getClass().getClassLoader(),
 						fileManager.getObjectFiles());
-      return loader.loadClass(className).newInstance();
+      try {
+	fileManager.close();
+      } catch (IOException ex) {
+	// Here ???
+      }
+      return loader.loadClass(className);
    }
 
    public String getFormatedError() {
