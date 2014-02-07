@@ -1,38 +1,41 @@
 package compiler;
 
 import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
-import java.io.IOException;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 
 import java.net.URI;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
 import javax.tools.Diagnostic;
 import javax.tools.DiagnosticCollector;
 import javax.tools.FileObject;
 import javax.tools.ForwardingJavaFileManager;
-import javax.tools.JavaCompiler;
 import javax.tools.JavaCompiler.CompilationTask;
-import javax.tools.JavaFileObject;
-import javax.tools.JavaFileObject.Kind;
+import javax.tools.JavaCompiler;
 import javax.tools.JavaFileManager;
+import javax.tools.JavaFileObject.Kind;
+import javax.tools.JavaFileObject;
 import javax.tools.SimpleJavaFileObject;
 import javax.tools.StandardJavaFileManager;
 import javax.tools.ToolProvider;
-
-import java.util.Arrays;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 
 public class RuntimeJavaCompiler {
    private final JavaCompiler compiler;
    private final DiagnosticCollector<JavaFileObject> diagnostics = new DiagnosticCollector<JavaFileObject>();
    private final List<String> options = new ArrayList<String>();
+
+   /* Public API */
+   /* ===========*/
 
    public RuntimeJavaCompiler(Iterable<String> options) {
       this.compiler = ToolProvider.getSystemJavaCompiler();
@@ -46,17 +49,36 @@ public class RuntimeJavaCompiler {
       }
    }
 
-
    public RuntimeJavaCompiler() {
        this(new ArrayList<String>());
    }
 
-   public Object compileObject(String className, String source) throws CompileException, ClassNotFoundException,
-   	  InstantiationException, IllegalAccessException {
-      return compile(className, source).newInstance();
+   public Object compileToObject(String className, String source) {
+   	   return null;
    }
 
-   public Object compileObject(String className, String source, Iterable<? extends Object> args) throws CompileException, ClassNotFoundException, InstantiationException, IllegalAccessException, InvocationTargetException, NoSuchMethodException {
+   public Object compileToObjectWithCtor(String className, String source, Iterable<? extends Object> args) {
+   	   return null;
+   }
+
+   public Object compileToObjectWithDependency(String className, String source, Iterable<? extends Class> dependencies) {
+   	   return null;
+   }
+
+   public Object compileToObject(String className, String source, Iterable<? extends Class> dependencies, Iterable<? extends Object> args) {
+   	   return null;
+   }
+
+   public Class compileToType(String className, String source) {
+   	   return null;
+   }
+
+   public Class compileToType(String className, String source, Iterable<? extends Class> dependencies) {
+   	   return null;
+   }
+
+   /*
+   private Object compileObject(String className, String source, Iterable<? extends Object> args) throws CompileException, ClassNotFoundException, InstantiationException, IllegalAccessException, InvocationTargetException, NoSuchMethodException {
 
     Class t = compile(className, source);
     Constructor ctor = t.getConstructor(makeParams(args));
@@ -74,6 +96,7 @@ public class RuntimeJavaCompiler {
 
        return (Class[])types.toArray();
    }
+*/
 
    private Class compile(String className, String source) throws CompileException, ClassNotFoundException {
       final InMemoryFileManager fileManager = new InMemoryFileManager(compiler);
@@ -90,9 +113,9 @@ public class RuntimeJavaCompiler {
       ClassLoader loader = new CustomLoader(this.getClass().getClassLoader(),
 						fileManager.getObjectFiles());
       try {
-	fileManager.close();
+      	  fileManager.close();
       } catch (IOException ex) {
-	// Here ???
+      	  // Here ???
       }
       return loader.loadClass(className);
    }

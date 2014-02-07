@@ -40,7 +40,7 @@ class SimpleClassSpec extends FlatSpec {
   def checkForThrowException[T<:Exception:Manifest](className: String, srcGen: String => String, ex: Class[T]) {
     intercept[T] {
 	val compiler = new RuntimeJavaCompiler
-      val obj = compiler.compileObject(className, srcGen(className))
+      val obj = compiler.compileToObject(className, srcGen(className))
     }
   }
 
@@ -48,7 +48,7 @@ class SimpleClassSpec extends FlatSpec {
     val compiler = new RuntimeJavaCompiler
     val className = generateClassName
     val src = emitValidSource(className)
-    val obj = compiler.compileObject(className, src)
+    val obj = compiler.compileToObject(className, src)
     assert(obj != null)
   }
 
