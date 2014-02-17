@@ -13,8 +13,10 @@ import java.net.URI;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import javax.tools.Diagnostic;
 import javax.tools.DiagnosticCollector;
@@ -53,39 +55,41 @@ public class RuntimeJavaCompiler {
 		this(new ArrayList<String>());
 	}
 
-	public Object compileToObject(String className, String source) {
-		return null;
+	public Object compileToObject(String className, String source) throws CompileException, ClassNotFoundException,
+			InstantiationException, IllegalAccessException {
+		return compile(className, source, this.options).newInstance();
 	}
 
-	public Object compileToObjectWithCtor(String className, String source, Iterable<? extends Object> args) {
-		return null;
-	}
-
-	public Object compileToObjectWithDependency(String className, String source, Iterable<? extends Class> dependencies) {
-		return null;
-	}
-
-	public Object compileToObject(String className, String source, Iterable<? extends Class> dependencies, Iterable<? extends Object> args) {
-		return null;
-	}
-
-	public Class compileToType(String className, String source) {
-		return null;
-	}
-
-	public Class compileToType(String className, String source, Iterable<? extends Class> dependencies) {
-		return null;
-	}
-
-	/*
-	private Object compileObject(String className, String source, Iterable<? extends Object> args) throws CompileException, ClassNotFoundException, InstantiationException, IllegalAccessException, InvocationTargetException, NoSuchMethodException {
-
-		Class t = compile(className, source);
-		Constructor ctor = t.getConstructor(makeParams(args));
+	public Object compileToObjectWithCtor(String className, String source, Iterable<? extends Object> args) throws
+			CompileException, InstantiationException, NoSuchMethodException, ClassNotFoundException, IllegalAccessException,
+			InvocationTargetException {
+		Class<?> type = compile(className, source, this.options);
+		Constructor<?> ctor = type.getConstructor(makeCtorParams(args));
 		return ctor.newInstance(args);
 	}
 
-	private Class[] makeParams(Iterable<? extends Object> args) {
+	public Object compileToObjectWithDependency(String className, String source, Iterable<? extends Class> dependencies) throws CompileException,
+			ClassNotFoundException, InstantiationException, InvocationTargetException, IllegalAccessException {
+		return compile(className, source, appendClassPathToOptions(dependencies)).newInstance();
+	}
+
+	public Object compileToObject(String className, String source, Iterable<? extends Class> dependencies, Iterable<? extends Object> args) throws
+			CompileException, InstantiationException, NoSuchMethodException, ClassNotFoundException, IllegalAccessException,
+			InvocationTargetException {
+		Class<?> type = compile(className, source, appendClassPathToOptions(dependencies));
+		Constructor<?> ctor = type.getConstructor(makeCtorParams(args));
+		return ctor.newInstance(args);
+	}
+
+	public Class compileToType(String className, String source) throws CompileException, ClassNotFoundException {
+		return compile(className, source, this.options);
+	}
+
+	public Class compileToType(String className, String source, Iterable<? extends Class> dependencies) throws CompileException, ClassNotFoundException {
+		return compile(className, source, appendClassPathToOptions(dependencies));
+	}
+
+	private Class[] makeCtorParams(Iterable<? extends Object> args) {
 		List<Class> types = new ArrayList<Class>();
 		for (Object each: args) {
 			if (each == null)
@@ -95,9 +99,8 @@ public class RuntimeJavaCompiler {
 
 		return (Class[])types.toArray();
 	}
-	*/
 
-	private Class compile(String className, String source) throws CompileException, ClassNotFoundException {
+	private Class compile(String className, String source, Iterable<String> options) throws CompileException, ClassNotFoundException {
 		final InMemoryFileManager fileManager = new InMemoryFileManager(compiler);
 		final List<JavaFileObject> files = new ArrayList<JavaFileObject>();
 
@@ -114,9 +117,65 @@ public class RuntimeJavaCompiler {
 		try {
 			fileManager.close();
 		} catch (IOException ex) {
-			// Here ???
+			// Here ? In Memory  Ops ?
+			ex.printStackTrace(System.err);
 		}
 		return loader.loadClass(className);
+	}
+
+	private Iterable<String> appendClassPathToOptions(Iterable<? extends Class> dependencies)
+	{
+		final String cpName = "-cp";
+		final String classPathName = "-classpath";
+		final Iterable<String> paths = getUniqPaths(dependencies);
+		List<String> result = new ArrayList<String>(options);
+
+		int idx = options.indexOf(cpName);
+		if (idx < 0) {
+			idx = options.indexOf(classPathName);
+			if (idx < 0) {
+				// Just append
+				result.add(cpName);
+				result.add(makeClassPath(null, paths));
+				return result;
+			}
+		}
+
+		if ((idx+1) == options.size()) {
+			result.add(cpName);
+			result.add(makeClassPath(null, paths));
+			return result;
+		}
+
+		final String originalPath = options.get(idx+1);
+		result.set(idx+1, makeClassPath(originalPath, paths));
+
+		return result;
+	}
+
+	private Iterable<String> getUniqPaths(Iterable<? extends Class> dependencies)
+	{
+		Set<String> result = new HashSet<String>();
+
+		for (Class each : dependencies) {
+			result.add(each.getProtectionDomain().getCodeSource().getLocation().toString());
+		}
+
+		return result;
+	}
+
+	private String makeClassPath(String original, Iterable<String> paths)
+	{
+		final String pathDelim = ":";
+		StringBuilder sb = new StringBuilder(original);
+
+		for (String each : paths) {
+			if (sb.length() > 0)
+			sb.append(pathDelim);
+			sb.append(each);
+		}
+
+		return sb.toString();
 	}
 
 	public String getFormatedError() {
@@ -158,7 +217,7 @@ public class RuntimeJavaCompiler {
 		}
 
 		public byte[] toByteArray() {
-			return this.stream.toByteArray();\
+			return this.stream.toByteArray();
 		}
 
 		@Override
